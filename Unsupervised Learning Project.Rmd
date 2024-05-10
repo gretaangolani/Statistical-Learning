@@ -1,0 +1,682 @@
+---
+title: "Unsupervised Learning"
+author: "Greta"
+date: "3/17/2024"
+output: html_document
+---
+```{r}
+#Importing the necessary libraries
+
+library(ggplot2)
+library(gridExtra)
+library(corrplot)
+library(factoextra)
+library(hopkins)
+library(cluster)
+library(ggfortify)
+library(reshape2)
+```
+
+```{r}
+#Loading the dataset
+
+country <- read.csv("country_data.csv", stringsAsFactors=TRUE)
+head(country)
+summary(country)
+dim(country)
+```
+```{r}
+str(country)
+```
+```{r}
+#Checking for duplicates and missing values in the dataset
+any(is.na(country))
+any(duplicated(country))
+```
+```{r}
+#set the country variable as row
+rownames(country)<-country$country
+```
+
+```{r}
+country_new <- country[,c(2:10)]
+head(country_new)
+```
+```{r}
+#quick visual summary of the variables in the country_new data frame
+plot(country_new)
+```
+```{r}
+#plotting histograms of the country_new dataset
+
+p1a <- ggplot(data = country_new, aes(x = child_mort)) +
+  geom_histogram(aes(y = ..density..), colour="black", fill="white") + 
+  geom_density(alpha = 0.5, fill = "red") + 
+  xlab("Child Mortality") +
+  theme_minimal()
+
+p1b <- ggplot(data = country_new, aes(x = exports)) +
+  geom_histogram(aes(y = ..density..), colour="black", fill="white") + 
+  geom_density(alpha = 0.5, fill = "yellow") + 
+  xlab("Exports") + 
+  theme_minimal()
+
+p1c <- ggplot(data = country_new, aes(x = health)) +
+  geom_histogram(aes(y = ..density..), colour="black", fill="white") + 
+  geom_density(alpha = 0.5, fill = "green") + 
+  xlab("Health") + 
+  theme_minimal()
+
+p1d <- ggplot(data = country_new, aes(x = imports)) +
+  geom_histogram(aes(y = ..density..), colour="black", fill="white") + 
+  geom_density(alpha = 0.5, fill = "blue") + 
+  xlab("Imports") + 
+  theme_minimal()
+
+p1e <- ggplot(data = country_new, aes(x = income)) +
+  geom_histogram(aes(y = ..density..), colour="black", fill="white") + 
+  geom_density(alpha = 0.5, fill = "purple") + 
+  xlab("Income") + 
+  theme_minimal()
+
+p1f <- ggplot(data = country_new, aes(x = inflation)) +
+  geom_histogram(aes(y = ..density..), colour="black", fill="white") + 
+  geom_density(alpha = 0.5, fill = "orange") + 
+  xlab("Inflation") + 
+  theme_minimal()
+
+p1g <- ggplot(data = country_new, aes(x = life_expec)) +
+  geom_histogram(aes(y = ..density..), colour="black", fill="white") + 
+  geom_density(alpha = 0.5, fill = "brown") + 
+  xlab("Life expectancy") + 
+  theme_minimal()
+
+p1h <- ggplot(data = country_new, aes(x = total_fer)) +
+  geom_histogram(aes(y = ..density..), colour="black", fill="white") + 
+  geom_density(alpha = 0.5, fill = "pink") + 
+  xlab("Total Feritility") + 
+  theme_minimal()
+
+p1i <- ggplot(data = country_new, aes(x = gdpp)) +
+  geom_histogram(aes(y = ..density..), colour="black", fill="white") + 
+  geom_density(alpha = 0.5, fill = "light pink") + 
+  xlab("Gdpp") + 
+  theme_minimal()
+
+options(repr.plot.width=10, repr.plot.height=10)
+grid.arrange(p1a, p1b, p1c,p1d, nrow=2)
+grid.arrange(p1e,p1f,p1g,p1h, nrow=2)
+grid.arrange(p1i, nrow=1)
+```
+```{r}
+corrm <- cor(country_new)
+
+# the values upper are set to 0
+corrm_upper <- corrm
+corrm_upper[upper.tri(corrm_upper)] <- 0
+
+# the values of the principal diagonal are set to 1
+diag(corrm_upper) <- 1
+
+# Plot heatmap of the correlation matrix
+heatmap_lower <- ggplot(data = melt(corrm_upper, na.rm = TRUE), aes(Var1, Var2, fill = value)) +
+  geom_tile() +
+  scale_fill_gradient(low = "white", high = "purple", guide = "colorbar") +
+  geom_text(aes(label = round(value, 2)), color = "black") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+print(heatmap_lower)
+```
+```{r}
+corrm <- cor(country_new)
+print(corrm)
+```
+
+```{r}
+#Plotting boxplots
+par(mfrow= c(2,5), bg = "pink")
+for (i in 1:ncol(country_new)) {
+  boxplot(country_new [,i], main = names(country_new)[i],
+          col = "blue", 
+          border = "black", 
+          notch = T)
+}
+```
+
+
+```{r}
+p4a <- boxplot(country_new, main = "Original Features", col= "blue", border = "black", notch = T)
+
+country_scaled <- data.frame(scale(country_new))
+summary(country_scaled)
+head(country_scaled)
+
+
+
+p4b <- boxplot(country_scaled, main = "Scaled Features", col = "blue", 
+          border = "black", 
+          notch = T)
+
+
+
+```
+```{r}
+# Perform PCA
+pca_result <- prcomp(country_scaled)
+biplot(pca_result)
+# Extract the principal component scores
+pca_scores <- as.data.frame(pca_result$x)
+```
+```{r}
+# Extract the explained variance
+explained_variance <- pca_result$sdev^2
+
+# Print explained variance
+print(explained_variance)
+```
+```{r}
+cumulative_variance_ratio <- cumsum(pca_result$sdev^2) / sum(pca_result$sdev^2)
+print(cumulative_variance_ratio)
+```
+```{r}
+pca_result
+```
+```{r}
+pca_scores
+```
+```{r}
+# Kaiser Criterion: How many PCs to keep?
+
+pca_eigen <- get_eigenvalue(pca_result)
+barplot(pca_eigen$eigenvalue, names.arg = c("PC1", "PC2", "PC3", "PC4", "PC5", "PC6","PC7", "PC8", "PC9")
+       ,main = "Eigenvalues of the Principal Components")
+abline(h = 1, col = "red", lty = 2)
+# Kaiser criterion: keep PCs with Eigenvalues > 1
+# Only PC1 is retained
+```
+```{r}
+##scree plot
+par(mfrow=c(1,2))
+plot(cumulative_variance_ratio,xlab="Principal component",ylab="Proportion of variance expalined",ylim=c(0,1),type="b", col = "violet")
+plot(cumsum(cumulative_variance_ratio),xlab="Principal component",ylab="Cumulative variance expalined",ylim=c(0,1),type="b", col= "violet")
+```
+```{r}
+#Setting the number of components to use; from PC1 till PC4 in this case
+pca_scores_1 <- pca_result$x[, 1:4]
+head(pca_scores_1)
+```
+```{r}
+plot(prcomp(pca_scores_1)$x)
+text(prcomp(pca_scores_1)$x, rownames(country))
+abline(h = 0, v = 0, col="violet")
+```
+
+```{r}
+pairs(country[colnames(country_new)])
+      
+# Plotting all pairs of numeric features (original data)
+colors <- c('violet', 'green', 'blue')[unclass(country$country)]
+pairs(country[colnames(country_new)], 
+      main = "Original Data Combinations (colored by species)", 
+      col = colors)
+# Plotting across the first 4 principal components
+scatterplot1 <- autoplot(pca_result, data = country, colour = 'violet', 
+                        components = c("PC1", "PC2", "PC3", "PC4"),
+                        label = TRUE, label.size = 3, label.color = "black", 
+                        label.vjust = -0.5) +
+                        theme_minimal()
+
+print(scatterplot1)
+
+# Create scatterplot with loadings and country names
+scatterplot <- autoplot(pca_result, data = country, colour = 'violet', 
+                        components = c("PC1", "PC2", "PC3", "PC4"),
+                        loadings = TRUE, loadings.label = TRUE,
+                        label = TRUE, label.size = 3, label.color = "black", 
+                        label.vjust = -0.5) +
+                        theme_minimal()
+
+# Print the scatterplot with country names
+print(scatterplot)
+```
+```{r}
+pairs(pca_scores_1)
+```
+```{r}
+set.seed(128)
+hopkins(pca_scores_1) 
+#quite high result --> high tendency to cluster
+```
+
+```{r}
+heatmap(as.matrix(pca_scores_1), cexCol = 1)
+heatmap(as.matrix(country_scaled), cexCol = 1) 
+```
+```{r}
+#Hierarchical Clustering
+
+di=dist(pca_scores_1)
+health_cl_comp=hclust(di,method="complete")
+plot(health_cl_comp, labels=FALSE)
+
+health_cl_ave=hclust(di,method="average")
+plot(health_cl_ave, labels = FALSE)
+
+health_cl_sin=hclust(di,method="single")
+plot(health_cl_sin, labels = FALSE)
+
+par(mfrow=c(1,1))
+```
+```{r}
+# METHOD 3: HIERARCHICAL CLUSTERING
+
+distances <- dist(pca_scores_1, method = "euclidean")
+hier_fit <- hclust(distances, method="ward.D2")
+
+plot(hier_fit, labels = FALSE)
+
+# Multiple cut-off heights appear to yield an acceptable clustering result
+abline(h = 30, col="orange", lty = 2)
+abline(h = 15, col="red") # middle option is chosen, yields k = 4
+abline(h = 10, col="blue", lty = 2)
+
+# Re-plot dendogram with the 4 clusters
+plot(hier_fit, labels = FALSE)
+rect.hclust(hier_fit, k = 4, border = "red") 
+
+# Assign the 4 clusters
+h_clusters <- cutree(hier_fit, k = 4)
+
+fviz_cluster(list(data = pca_scores_1, cluster = h_clusters), 
+             main = "Cluster Plot - Hierarchical Clustering")
+```
+```{r}
+# Subset data for observations belonging to cluster 4
+cluster_3_indices <- which(h_clusters == 4)
+cluster_3_data <- country_new[cluster_3_indices, ]
+
+# Print the values belonging to cluster 3
+print(cluster_3_data)
+```
+
+
+```{r}
+#K-means clustering
+#how many clusters ?
+
+wssplot <- function(pca_scores_1, nc=15, seed=128){
+  wss <- (nrow(pca_scores_1)-1)*sum(apply(pca_scores_1,2,var))
+  for (i in 2:nc){
+    set.seed(seed)
+    wss[i] <- sum(kmeans(pca_scores_1, centers=i)$withinss)}
+  plot(1:nc, wss, type="b", xlab="Number of Clusters",
+       ylab="Within groups sum of squares", col= "violet")}
+
+wssplot(pca_scores_1, nc=8) 
+```
+```{r}
+# Identifying Optimal Number of Clusters
+# METHOD 2: AVERAGE SILHOUETTE SCORE
+
+sil_score <- function(k){
+  km <- kmeans(pca_scores_1, centers = k, nstart = 25)
+  ss <- silhouette(km$cluster, dist(pca_scores_1))
+  mean(ss[, 3])
+}
+
+silplot <- function(kmax){
+  k <- 2:kmax
+  avg_silhouettes <- sapply(k, sil_score)
+  plot(k,avg_silhouettes, type = 'b', xlab = "Clusters")
+}
+
+silplot(8)
+# k = 4 clusters is optimal as it has highest avg silhouette score
+```
+```{r}
+# Perform KMeans clustering with 3 clusters
+kmeans_model3 <- kmeans(pca_scores_1, centers = 3, nstart = 10)
+kmeans_model3
+```
+```{r}
+# Perform KMeans clustering with 4 clusters
+kmeans_model4 <- kmeans(pca_scores_1, centers = 4, nstart = 10)
+kmeans_model4
+```
+```{r}
+# Get cluster assignments
+y_kmeans <- kmeans_model4$cluster
+#print(y_kmeans)
+
+# Add cluster labels to the original data
+country_new$Class <- y_kmeans
+head(country_new)
+```
+```{r}
+#Plotting the graph for K-means 
+
+fviz_cluster(kmeans_model3, data = pca_scores_1,
+             main = "Cluster Plot - K-Means Clustering") #3 clusters
+
+fviz_cluster(kmeans_model4, data = pca_scores_1,
+             main = "Cluster Plot - K-Means Clustering") #4clusters
+```
+
+```{r}
+# Boxplot for imports and exports grouped by cluster (using k=4)
+ggplot(data = country_new, aes(x = child_mort, y = life_expec, group = factor(Class), fill = factor(Class))) +
+  geom_boxplot(position = position_dodge(width = 0.8)) +
+  labs(title = "Child Motrality and Life Expectancy vs Class") +
+  theme_minimal()
+
+# Boxplot for Child Mortality and Total Fertility grouped by cluster
+ggplot(data = country_new, aes(x = child_mort, y = total_fer, group = factor(Class), fill = factor(Class))) +
+  geom_boxplot(position = position_dodge(width = 0.8)) +
+  labs(title = "Child Mortality - Total Fertility vs Class") +
+  theme_minimal()
+
+# Boxplot for income and gdpp grouped by cluster
+ggplot(data = country_new, aes(x = income, y = gdpp, group = factor(Class), fill = factor(Class))) +
+  geom_boxplot(position = position_dodge(width = 0.8)) +
+  labs(title = "GDPP - Income vs Class") +
+  theme_minimal()
+
+# Boxplot for income and gdpp grouped by cluster
+ggplot(data = country_new, aes(x = imports, y = exports, group = factor(Class), fill = factor(Class))) +
+  geom_boxplot(position = position_dodge(width = 0.8)) +
+  labs(title = "Import - Export vs Class") +
+  theme_minimal()
+
+# Boxplot for income and gdpp grouped by cluster
+ggplot(data = country_new, aes(x = life_expec, y = health, group = factor(Class), fill = factor(Class))) +
+  geom_boxplot(position = position_dodge(width = 0.8)) +
+  labs(title = "Life Expectancy - Health vs Class") +
+  theme_minimal()
+
+
+```
+```{r}
+# Plot points with city names grouped by cluster
+ggplot(data = country_new, aes(x = child_mort, y = life_expec, color = factor(Class))) +
+  geom_point() +
+  geom_text(aes(label = country$country), check_overlap = TRUE, vjust = 0.5, hjust = 0.5) +  
+  labs(title = "Child Mortality - Life Expectancy vs Class") +
+  theme_minimal()
+```
+```{r}
+# Define a named vector with the mapping
+verdict <- c("Might need help", "Need help", "No help", "No help at all")
+
+# Create a new column 'Verdict' based on the 'Class' column
+country_new$Verdict <- verdict[country_new$Class]
+
+# Print the first few rows to verify
+print(country_new)
+```
+```{r}
+# Generate a table of frequencies for the 'Verdict' column
+verdict_table <- table(country_new$Verdict)
+#verdict_table <- table(country_new$Verdict, country$country)
+
+# Print the table
+print(verdict_table)
+```
+
+```{r}
+# Select rows where 'Verdict' is 'Need help'
+rows_need_help <- country_new[country_new$Verdict == "Need help", ]
+
+# Print the selected rows
+print(rows_need_help)
+
+```
+```{r}
+# Select rows where 'Verdict' is 'Might need help'
+rows_might_need_help <- country_new[country_new$Verdict == "Might need help", ]
+# Print the selected rows
+print(rows_might_need_help)
+```
+```{r}
+# Select rows where 'Verdict' is 'No help'
+rows_might_need_help <- country_new[country_new$Verdict == "No help", ]
+# Print the selected rows
+print(rows_might_need_help)
+```
+```{r}
+# Select rows where 'Verdict' is 'No help at all'
+rows_might_need_help <- country_new[country_new$Verdict == "No help at all", ]
+# Print the selected rows
+print(rows_might_need_help)
+```
+```{r}
+# Select rows where 'Verdict' is 'Need help'
+rows_need_help <- country[country_new$Verdict == "Need help",1 ]
+
+# Print the selected rows
+print(rows_need_help)
+```
+```{r}
+# Select rows where 'Verdict' is 'Might need help'
+rows_need_help <- country[country_new$Verdict == "Might need help",1 ]
+
+# Print the selected rows
+print(rows_need_help)
+```
+```{r}
+# Select rows where 'Verdict' is 'Might need help'
+rows_need_help <- country[country_new$Verdict == "No help at all",1 ]
+
+# Print the selected rows
+print(rows_need_help)
+```
+
+
+```{r}
+
+#CHILD MORTALITY 
+p1a <- ggplot(data = country_new, aes(x = factor(Class, labels=verdict), y = child_mort)) +
+  geom_boxplot(aes(fill = factor(Class, labels=verdict)), position = position_dodge(width = 0.8)) +
+  labs(title = "Child Mortality vs K-means Cluster") +
+  xlab("K-means Cluster") +
+  ylab("Child Mortality") +
+  theme_minimal()
+
+print(p1a)
+
+p1b <- ggplot(data = country_new, aes(x = child_mort, fill = factor(Class, labels = verdict))) +
+  geom_histogram(aes(y = ..density..), bins = 30, alpha = 0.5, color = "black", position = "identity") +
+  facet_wrap(~Class, scales = "free") +
+  labs(title = "Child Mortality Distribution within K-means Clusters", x = "Child Mortality", y = "Density") +
+  theme_minimal()
+
+print(p1b)
+
+#EXPORTS
+
+p1c <- ggplot(data = country_new, aes(x = factor(Class, labels=verdict), y = exports)) +
+  geom_boxplot(aes(fill = factor(Class, labels=verdict)), position = position_dodge(width = 0.8)) +
+  labs(title = "Exports vs K-means Cluster") +
+  xlab("K-means Cluster") +
+  ylab("CExports") +
+  theme_minimal()
+
+print(p1c)
+
+p1d <- ggplot(data = country_new, aes(x = exports, fill = factor(Class, labels=verdict))) +
+  geom_histogram(aes(y = ..density..), bins = 30, alpha = 0.5, color = "black", position = "identity") +
+  facet_wrap(~Class, scales = "free") +
+  labs(title = "Exports Distribution within K-means Clusters", x = "Exports", y = "Density") +
+  theme_minimal()
+
+print(p1d)
+
+#HEALTH
+
+p1e <- ggplot(data = country_new, aes(x = factor(Class, labels=verdict), y = health)) +
+  geom_boxplot(aes(fill = factor(Class, labels=verdict)), position = position_dodge(width = 0.8)) +
+  labs(title = "Health vs K-means Cluster") +
+  xlab("K-means Cluster") +
+  ylab("Health") +
+  theme_minimal()
+
+print(p1e)
+
+p1f <- ggplot(data = country_new, aes(x = health, fill = factor(Class, labels=verdict))) +
+  geom_histogram(aes(y = ..density..), bins = 30, alpha = 0.5, color = "black", position = "identity") +
+  facet_wrap(~Class, scales = "free") +
+  labs(title = "Health Distribution within K-means Clusters", x = "Health", y = "Density") +
+  theme_minimal()
+
+print(p1f)
+
+#IMPORTS
+
+p1g <- ggplot(data = country_new, aes(x = factor(Class, labels=verdict), y = imports)) +
+  geom_boxplot(aes(fill = factor(Class, labels=verdict)), position = position_dodge(width = 0.8)) +
+  labs(title = "Imports vs K-means Cluster") +
+  xlab("K-means Cluster") +
+  ylab("Imports") +
+  theme_minimal()
+
+print(p1g)
+
+p1h <- ggplot(data = country_new, aes(x = imports, fill = factor(Class, labels=verdict))) +
+  geom_histogram(aes(y = ..density..), bins = 30, alpha = 0.5, color = "black", position = "identity") +
+  facet_wrap(~Class, scales = "free") +
+  labs(title = "Imports Distribution within K-means Clusters", x = "Imports", y = "Density") +
+  theme_minimal()
+
+print(p1h)
+
+#INCOME
+
+p1i <- ggplot(data = country_new, aes(x = factor(Class, labels=verdict), y = income)) +
+  geom_boxplot(aes(fill = factor(Class, labels=verdict)), position = position_dodge(width = 0.8)) +
+  labs(title = "Income vs K-means Cluster") +
+  xlab("K-means Cluster") +
+  ylab("Income") +
+  theme_minimal()
+
+print(p1i)
+
+p1l <- ggplot(data = country_new, aes(x = income, fill = factor(Class, labels=verdict))) +
+  geom_histogram(aes(y = ..density..), bins = 30, alpha = 0.5, color = "black", position = "identity") +
+  facet_wrap(~Class, scales = "free") +
+  labs(title = "Income Distribution within K-means Clusters", x = "Income", y = "Density") +
+  theme_minimal()
+
+print(p1l)
+
+#INFLATION
+
+p1m <- ggplot(data = country_new, aes(x = factor(Class, labels=verdict), y = inflation)) +
+  geom_boxplot(aes(fill = factor(Class, labels=verdict)), position = position_dodge(width = 0.8)) +
+  labs(title = "Inflation vs K-means Cluster") +
+  xlab("K-means Cluster") +
+  ylab("Inflation") +
+  theme_minimal()
+
+print(p1m)
+
+p1n <- ggplot(data = country_new, aes(x = inflation, fill = factor(Class, labels=verdict))) +
+  geom_histogram(aes(y = ..density..), bins = 30, alpha = 0.5, color = "black", position = "identity") +
+  facet_wrap(~Class, scales = "free") +
+  labs(title = "Inflation Distribution within K-means Clusters", x = "Inflation", y = "Density") +
+  theme_minimal()
+
+print(p1n)
+
+#LIFE EXPECTANCY
+
+p1o <- ggplot(data = country_new, aes(x = factor(Class, labels=verdict), y = life_expec)) +
+  geom_boxplot(aes(fill = factor(Class, labels=verdict)), position = position_dodge(width = 0.8)) +
+  labs(title = "Life Expectancy vs K-means Cluster") +
+  xlab("K-means Cluster") +
+  ylab("Life Expectancy") +
+  theme_minimal()
+
+print(p1o)
+
+p1p <- ggplot(data = country_new, aes(x = life_expec, fill = factor(Class, labels=verdict))) +
+  geom_histogram(aes(y = ..density..), bins = 30, alpha = 0.5, color = "black", position = "identity") +
+  facet_wrap(~Class, scales = "free") +
+  labs(title = "Life Expectancy Distribution within K-means Clusters", x = "Life Expectancy", y = "Density") +
+  theme_minimal()
+
+print(p1p)
+
+#TOTAL FERTILITY
+
+p1q <- ggplot(data = country_new, aes(x = factor(Class, labels=verdict), y = total_fer)) +
+  geom_boxplot(aes(fill = factor(Class, labels=verdict)), position = position_dodge(width = 0.8)) +
+  labs(title = "Total Feritility vs K-means Cluster") +
+  xlab("K-means Cluster") +
+  ylab("Total Feritility") +
+  theme_minimal()
+
+print(p1q)
+
+p1r <- ggplot(data = country_new, aes(x = total_fer, fill = factor(Class, labels=verdict))) +
+  geom_histogram(aes(y = ..density..), bins = 30, alpha = 0.5, color = "black", position = "identity") +
+  facet_wrap(~Class, scales = "free") +
+  labs(title = "Total Feritility Distribution within K-means Clusters", x = "Total Feritility", y = "Density") +
+  theme_minimal()
+
+print(p1r)
+
+#GDPP
+
+p1s <- ggplot(data = country_new, aes(x = factor(Class, labels=verdict), y = gdpp)) +
+  geom_boxplot(aes(fill = factor(Class, labels=verdict)), position = position_dodge(width = 0.8)) +
+  labs(title = "GDPP vs K-means Cluster") +
+  xlab("K-means Cluster") +
+  ylab("GDPP") +
+  theme_minimal()
+
+print(p1s)
+
+p1t <- ggplot(data = country_new, aes(x = gdpp, fill = factor(Class, labels=verdict))) +
+  geom_histogram(aes(y = ..density..), bins = 30, alpha = 0.5, color = "black", position = "identity") +
+  facet_wrap(~Class, scales = "free") +
+  labs(title = "GDPP Distribution within K-means Clusters", x = "GDPP", y = "Density") +
+  theme_minimal()
+
+print(p1t)
+```
+
+
+
+
+
+
+```{r}
+# Define the names corresponding to each class
+class_names <- c("Class A", "Class B", "Class C", "Class D")
+
+# Map the factor levels to class names
+country_new$Class <- factor(country_new$Class, levels = 1:length(class_names), labels = class_names)
+
+p1z <- ggplot(data = country_new, aes(x = income, fill = Class)) +
+  geom_histogram(aes(y = ..density..), bins = 30, alpha = 0.5, color = "black", position = "identity") +
+  facet_wrap(~Class, scales = "free") +
+  labs(title = "Income Distribution within K-means Clusters", x = "Income", y = "Density") +
+  theme_minimal()
+
+print(p1z)
+
+p1f <- ggplot(data = country_new, aes(x = health, fill = factor(Class))) +
+  geom_histogram(aes(y = ..density..), bins = 30, alpha = 0.5, color = "black", position = "identity") +
+  facet_wrap(~Class, scales = "free") +
+  labs(title = "Health Distribution within K-means Clusters", x = "Health", y = "Density") +
+  theme_minimal()
+
+print(p1f)
+```
+
+
+
+
+
+
+

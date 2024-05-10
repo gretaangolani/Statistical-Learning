@@ -1,0 +1,758 @@
+---
+title: "Supervised Project"
+author: "Greta"
+date: "5/10/2024"
+output: html_document
+---
+```{r}
+library(dplyr)
+library(ggplot2)
+library(gridExtra)
+library(matrixStats)
+library(ggpubr)
+library(caret)
+library(pROC)
+library(MASS)
+library(rpart)
+library(rpart.plot)
+library(randomForest)
+library(reshape2)
+library(ggbreak)
+
+```
+
+```{r}
+data <- read.csv("heart.csv", stringsAsFactors=TRUE)
+head(data)
+summary(data)
+dim(data)
+```
+```{r}
+any(is.na(data))
+any(duplicated(data))
+```
+```{r}
+# Calculate the percentage of each category in the 'HeartDisease' column
+heart_disease_freq <- table(data$HeartDisease) / nrow(data) * 100
+heart_disease_freq
+
+```
+```{r}
+HD <- ggplot(data, aes(x = factor(HeartDisease))) + 
+  geom_bar(fill = "pink") +  
+  ylab("Frequency") +  
+  xlab("Heart Disease") +  
+  theme_minimal() + 
+  scale_x_discrete(labels = c("No (0)", "Yes(1)")) +  
+  scale_y_continuous(labels = scales::comma)  
+
+print(HD)
+
+```
+
+
+
+```{r}
+# NUMERIC FEATURE
+#AGE
+p1a <- ggplot(data = data, aes(x = Age)) +
+  geom_histogram(binwidth = 5) +
+  theme_minimal()
+
+p1b <- ggplot(data = data, aes(x = Age, group = factor(HeartDisease), fill = factor(HeartDisease))) +
+  geom_histogram(position = "identity", alpha = 0.5, binwidth = 5) +
+  theme_minimal() + 
+  scale_fill_brewer(palette = "YlGn")
+
+p1c <- ggplot(data = data, aes(x = factor(HeartDisease), y = Age)) +
+  geom_boxplot() +
+  theme_minimal()
+
+# Statistical summary of Age, grouped by Diabetes status
+with(data, aggregate(Age, list(HeartDisease = HeartDisease), FUN = summary)) 
+
+p1d <- ggline(data, x = "HeartDisease", y = "Age", add = "mean_se") +
+  theme_minimal()
+
+# Anova
+aov_age <- aov(Age ~ HeartDisease, data = data)
+summary(aov_age) # p-value < 0.001 indicating significant difference
+
+# Display Plots
+grid.arrange(p1a, p1b, p1c, p1d, ncol=2, top = "Age")
+
+# Explore normality
+qqnorm(data$Age, pch = 20, frame = FALSE)
+qqline(data$Age, col="red", lwd = 2)
+
+#..............................................................................
+#RESTINGBP
+
+p1a <- ggplot(data = data, aes(x = RestingBP)) +
+  geom_histogram(binwidth = 5) +
+  theme_minimal()
+
+p1b <- ggplot(data = data, aes(x = RestingBP, group = factor(HeartDisease), fill = factor(HeartDisease))) +
+  geom_histogram(position = "identity", alpha = 0.5, binwidth = 5) +
+  theme_minimal() + 
+  scale_fill_brewer(palette = "YlGn")
+
+p1c <- ggplot(data = data, aes(x = factor(HeartDisease), y = RestingBP)) +
+  geom_boxplot() +
+  theme_minimal()
+
+# Statistical summary of RestingBP, grouped by Diabetes status
+with(data, aggregate(RestingBP, list(HeartDisease = HeartDisease), FUN = summary)) 
+
+p1d <- ggline(data, x = "HeartDisease", y = "RestingBP", add = "mean_se") +
+  theme_minimal()
+
+# Anova
+aov_RestingBP <- aov(RestingBP ~ HeartDisease, data = data)
+summary(aov_RestingBP) # p-value < 0.001 indicating significant difference
+
+# Display Plots
+grid.arrange(p1a, p1b, p1c, p1d, ncol=2, top = "RestingBP")
+
+# Explore normality
+qqnorm(data$RestingBP, pch = 20, frame = FALSE)
+qqline(data$RestingBP, col="red", lwd = 2)
+
+#..............................................................................
+#CHOLESTEROL
+
+p1a <- ggplot(data = data, aes(x = Cholesterol)) +
+  geom_histogram(binwidth = 5) +
+  theme_minimal()
+
+p1b <- ggplot(data = data, aes(x = Cholesterol, group = factor(HeartDisease), fill = factor(HeartDisease))) +
+  geom_histogram(position = "identity", alpha = 0.5, binwidth = 5) +
+  theme_minimal() + 
+  scale_fill_brewer(palette = "YlGn")
+
+p1c <- ggplot(data = data, aes(x = factor(HeartDisease), y = Cholesterol)) +
+  geom_boxplot() +
+  theme_minimal()
+
+# Statistical summary of Cholesterol, grouped by Diabetes status
+with(data, aggregate(Cholesterol, list(HeartDisease = HeartDisease), FUN = summary)) 
+
+p1d <- ggline(data, x = "HeartDisease", y = "Cholesterol", add = "mean_se") +
+  theme_minimal()
+
+# Anova
+aov_Cholesterol <- aov(Cholesterol ~ HeartDisease, data = data)
+summary(aov_Cholesterol) # p-value < 0.001 indicating significant difference
+
+# Display Plots
+grid.arrange(p1a, p1b, p1c, p1d, ncol=2, top = "Cholesterol")
+
+# Explore normality
+qqnorm(data$Cholesterol, pch = 20, frame = FALSE)
+qqline(data$Cholesterol, col="red", lwd = 2)
+
+#..............................................................................
+#MaxHR
+
+p1a <- ggplot(data = data, aes(x = MaxHR)) +
+  geom_histogram(binwidth = 5) +
+  theme_minimal()
+
+p1b <- ggplot(data = data, aes(x = MaxHR, group = factor(HeartDisease), fill = factor(HeartDisease))) +
+  geom_histogram(position = "identity", alpha = 0.5, binwidth = 5) +
+  theme_minimal() + 
+  scale_fill_brewer(palette = "YlGn")
+
+p1c <- ggplot(data = data, aes(x = factor(HeartDisease), y = MaxHR)) +
+  geom_boxplot() +
+  theme_minimal()
+
+# Statistical summary of MaxHR, grouped by Diabetes status
+with(data, aggregate(MaxHR, list(HeartDisease = HeartDisease), FUN = summary)) 
+
+p1d <- ggline(data, x = "HeartDisease", y = "MaxHR", add = "mean_se") +
+  theme_minimal()
+
+# Anova
+aov_MaxHR <- aov(MaxHR ~ HeartDisease, data = data)
+summary(aov_MaxHR) # p-value < 0.001 indicating significant difference
+
+# Display Plots
+grid.arrange(p1a, p1b, p1c, p1d, ncol=2, top = "MaxHR")
+
+# Explore normality
+qqnorm(data$MaxHR, pch = 20, frame = FALSE)
+qqline(data$MaxHR, col="red", lwd = 2)
+
+#..............................................................................
+#Oldpeak
+
+p1a <- ggplot(data = data, aes(x = Oldpeak)) +
+  geom_histogram(binwidth = 5) +
+  theme_minimal()
+
+p1b <- ggplot(data = data, aes(x = Oldpeak, group = factor(HeartDisease), fill = factor(HeartDisease))) +
+  geom_histogram(position = "identity", alpha = 0.5, binwidth = 5) +
+  theme_minimal() + 
+  scale_fill_brewer(palette = "YlGn")
+
+p1c <- ggplot(data = data, aes(x = factor(HeartDisease), y = Oldpeak)) +
+  geom_boxplot() +
+  theme_minimal()
+
+# Statistical summary of Oldpeak, grouped by Diabetes status
+with(data, aggregate(Oldpeak, list(HeartDisease = HeartDisease), FUN = summary)) 
+
+p1d <- ggline(data, x = "HeartDisease", y = "Oldpeak", add = "mean_se") +
+  theme_minimal()
+
+# Anova
+aov_Oldpeak <- aov(Oldpeak ~ HeartDisease, data = data)
+summary(aov_Oldpeak) # p-value < 0.001 indicating significant difference
+
+# Display Plots
+grid.arrange(p1a, p1b, p1c, p1d, ncol=2, top = "Oldpeak")
+
+# Explore normality
+qqnorm(data$Oldpeak, pch = 20, frame = FALSE)
+qqline(data$Oldpeak, col="red", lwd = 2)
+
+```
+
+
+```{r}
+# CATEGORICAL FEATURES
+
+#..............................................................................
+# Overall characteristics
+
+p2 <- ggplot(data, aes(x = Sex, fill = factor(HeartDisease))) + 
+  geom_bar(position = "fill") + 
+  ylab("Proportion") +
+  xlab("Sex") +
+  theme_minimal() + 
+  scale_fill_brewer(palette = "YlGn")
+
+p3 <- ggplot(data, aes(x = ChestPainType, fill = factor(HeartDisease))) + 
+  geom_bar(position = "fill") + 
+  ylab("Proportion") +
+  xlab("Chest Pain Type") +
+  theme_minimal() + 
+  scale_fill_brewer(palette = "YlGn")
+
+p4 <- ggplot(data, aes(x = RestingECG, fill = factor(HeartDisease))) + 
+  geom_bar(position = "fill") + 
+  ylab("Proportion") + 
+  xlab("Resting ECG") +
+  theme_minimal() + 
+  scale_fill_brewer(palette = "YlGn")
+
+p5 <- ggplot(data, aes(x = ExerciseAngina, fill = factor(HeartDisease))) + 
+  geom_bar(position = "fill") + 
+  ylab("Proportion") + 
+  xlab("Exercise Angina") +
+  theme_minimal() + 
+  scale_fill_brewer(palette = "YlGn")
+
+p6 <- ggplot(data, aes(x = ST_Slope, fill = factor(HeartDisease))) + 
+  geom_bar(position = "fill") + 
+  ylab("Proportion") + 
+  xlab("ST_Slope") +
+  theme_minimal() + 
+  scale_fill_brewer(palette = "YlGn")
+
+p7 <- ggplot(data, aes(x = FastingBS, fill = factor(HeartDisease))) + 
+  geom_bar(position = "fill") + 
+  ylab("Proportion") + 
+  xlab("Fasting BS") +
+  theme_minimal() + 
+  scale_fill_brewer(palette = "YlGn")
+
+# Display Plots
+
+grid.arrange(p2, p3, 
+             ncol=2, top = "Overall Characteristic Traits")
+
+grid.arrange(p4,p5, ncol=2, top = "Overall Characteristic Traits")
+grid.arrange(p6,p7, ncol = 2 , top = "Overall Characteristic Traits")
+
+```
+
+
+```{r}
+categorical_vars <- c("Sex", "ChestPainType", "RestingECG", "ExerciseAngina", "ST_Slope")
+# Check levels of each categorical variable
+sapply(data[, categorical_vars], levels)
+
+# Perform one-hot encoding for all categorical variables
+encoded_data <- model.matrix(~ . - 1, data[, categorical_vars], 
+                             contrasts.arg = lapply(data[, categorical_vars], contrasts, contrasts = FALSE))
+
+# Combine encoded data with remaining columns
+encoded_data <- cbind(data[, !names(data) %in% categorical_vars], encoded_data)
+
+# Check dimensions
+print(encoded_data)
+```
+
+
+```{r}
+# Select only the numeric columns for scaling
+numeric_columns <- c("Age", "RestingBP", "Cholesterol", "MaxHR", "Oldpeak")
+
+# Scale the numeric columns
+data_scaled <- scale(data[, numeric_columns])
+
+# Replace the original numerical columns with the scaled ones
+#encoded_data[, numeric_columns] <- data_scaled
+
+summary(data_scaled)
+```
+
+```{r}
+# Merge encoded_data and data_scaled
+merged_data <- cbind(encoded_data, data_scaled)
+# Print the merged data
+print(merged_data)
+```
+
+```{r}
+# Define columns to remove
+columns_to_remove <- c(1:3,5,6)
+
+# Remove specified columns from merged_data
+merged_data <- subset(merged_data, select = -c(columns_to_remove))
+
+# Print the updated merged data
+print(merged_data)
+```
+
+```{r}
+corrm <- cor(merged_data)
+
+# Imposta a zero i valori sopra la diagonale principale
+corrm_upper <- corrm
+corrm_upper[upper.tri(corrm_upper)] <- 0
+
+# Imposta i valori della diagonale principale a 1
+diag(corrm_upper) <- 1
+
+threshold <- 0.5
+# Plot heatmap of the lower part of the correlation matrix
+heatmap_lower <- ggplot(data = melt(corrm_upper, na.rm = TRUE), aes(Var1, Var2, fill = value)) + 
+  geom_tile() + 
+  scale_fill_gradient(low = "white", high = "purple", guide = "colorbar") + 
+  geom_text(data = subset(melt(corrm_upper, na.rm = TRUE), abs(value) > threshold), 
+            aes(label = round(value, 2)), color = "black", size = 2, hjust = 0.5, vjust = 0.5) + 
+  # Adjust text size and position 
+  theme_minimal() + 
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) 
+# Display the heatmap of the lower part
+print(heatmap_lower)
+```
+
+```{r}
+# Compute correlation matrix
+correlation_matrix <- cor(merged_data)
+
+# Find correlations with outcome variable
+correlation_with_heart_disease <- correlation_matrix[, "HeartDisease"]
+
+# Set values above the diagonal to zero
+correlation_with_heart_disease_upper <- correlation_with_heart_disease
+correlation_with_heart_disease_upper[upper.tri(correlation_with_heart_disease_upper)] <- 0
+
+# Convert to a one-column matrix
+correlation_with_heart_disease_upper <- as.matrix(correlation_with_heart_disease_upper)
+
+# Set values on the diagonal to 1
+diag(correlation_with_heart_disease_upper) <- 1
+
+# Plot heatmap of the lower part of the correlation matrix
+heatmap_heart_disease <- ggplot(data = melt(correlation_with_heart_disease_upper, na.rm = TRUE), aes("HeartDisease", Var1, fill = value)) +
+  geom_tile() +
+  scale_fill_gradient(low = "white", high = "purple", guide = "colorbar") +
+  geom_text(aes(label = round(value, 2)), color = "black") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 0, hjust = 0.5))
+
+# Display the heatmap
+print(heatmap_heart_disease)
+```
+
+```{r}
+# Define columns to remove
+columns_to_remove <- c(3,6,7,10,12,16)#,8)
+
+# Remove specified columns from merged_data
+merged_data <- subset(merged_data, select = -c(columns_to_remove))
+
+# Print the updated merged data
+print(merged_data)
+```
+
+
+```{r}
+# MODELS
+
+# Splitting Datasets
+set.seed(1234)
+split_train_test <- createDataPartition(merged_data$HeartDisease,p=0.7,list=FALSE)
+dtrain<- merged_data[split_train_test,]
+dtest<- merged_data[-split_train_test,]
+```
+
+
+```{r}
+# LOGISTIC REGRESSION
+
+lr_fit <- glm(HeartDisease ~ ., data=dtrain, family=binomial(link='logit'))
+#lr_fit <- glm(HeartDisease ~ ., data = dtrain)
+
+summary(lr_fit)
+
+# Confusion Matrices and Accuracies for LR
+# Train set
+lr_prob_dtrain <- predict(lr_fit, dtrain, type="response")
+lr_pred_dtrain <- factor(ifelse(lr_prob_dtrain > 0.5, "1", "0"))
+table(Predicted = lr_pred_dtrain, Actual = dtrain$HeartDisease)
+mean(lr_pred_dtrain == dtrain$HeartDisease)
+
+# confirm with built-in function
+cm_lr_dtrain <- confusionMatrix(
+  as.factor(lr_pred_dtrain),
+  as.factor(dtrain$HeartDisease),
+  positive = "1" 
+)
+cm_lr_dtrain
+
+# Test set
+lr_prob_dtest <- predict(lr_fit, dtest, type="response")
+# Convert logistic regression predictions to factor levels
+lr_pred_dtest <- factor(ifelse(lr_prob_dtest > 0.5, "1", "0"))
+
+#lr_pred_dtest <- ifelse(lr_prob_dtest > 0.5, "1", "0")
+#lr_pred_dtest <- factor(lr_pred_dtest > 0.5, levels = c("0", "1"))
+table(Predicted = lr_pred_dtest, Actual = dtest$HeartDisease)
+mean(lr_pred_dtest == dtest$HeartDisease)
+
+# confirm with built-in function
+cm_lr_dtest <- confusionMatrix(
+  as.factor(lr_pred_dtest),
+  as.factor(dtest$HeartDisease),
+  positive = "1" 
+)
+cm_lr_dtest
+
+# ROC Curve
+test_roc = roc(dtest$HeartDisease ~ lr_prob_dtest, plot = TRUE, print.auc = TRUE)
+as.numeric(test_roc$auc)
+
+# Explore threshold
+lr_thresholds <- c()
+lr_sensitivities <- c()
+lr_accuracies <- c()
+
+for(t in 1:99){
+  lr_pred_t <- ifelse(lr_prob_dtest > t/100.0, "1", "0")
+  cm_t <- table(Predicted = lr_pred_t, Actual = dtest$HeartDisease)
+  lr_thresholds <- append(lr_thresholds, t/100.0)
+  lr_sensitivities <- append(lr_sensitivities, 
+                             sensitivity(cm_t, positive = "1"))
+  lr_accuracies <- append(lr_accuracies, mean(lr_pred_t == dtest$HeartDisease))
+}
+
+```
+
+```{r}
+# Plot changes in Sensitivity (correct positives) and Accuracy
+pa <- ggplot(data=data.frame(lr_thresholds, lr_sensitivities),
+              aes(x = lr_thresholds, y = lr_sensitivities)) +
+  geom_line() + 
+  labs(x = 'Thresholds',y='Sensitivity') +
+  theme_minimal()
+
+pb <- ggplot(data=data.frame(lr_thresholds, lr_accuracies),
+              aes(x = lr_thresholds, y = lr_accuracies)) +
+  geom_line() + 
+  labs(x = 'Thresholds',y='Accuracy') +
+  theme_minimal()
+
+grid.arrange(pa, pb, ncol=1) 
+```
+
+```{r}
+# Option 1: Optimization of Sensitivity
+max(lr_sensitivities)
+lr_thresholds[which(lr_sensitivities == max(lr_sensitivities))]
+lr_accuracies[which(lr_sensitivities == max(lr_sensitivities))]
+```
+
+```{r}
+# the optimum sensitivity is achieved at t <= 0.04
+# the best accuracy achievable in this range is 66.2% at t = 0.04
+
+lr_sensitivities[30:40]
+lr_accuracies[30:40]
+#a good balance selected is 0.30 <= t <= 0.40 (increase both, sensitivity and accuracy)
+```
+
+```{r}
+# Option 2: Optimization of Accuracy
+max(lr_accuracies)
+lr_thresholds[which(lr_accuracies == max(lr_accuracies))]
+lr_sensitivities[which(lr_accuracies == max(lr_accuracies))]
+#the good baalnce selected in this case is 0.36 <= t <= 0.41, where the accuracy is maximized and this also improves sensibility 
+```
+
+```{r}
+#Option 2 choosen: Maximize Accuracy
+t = 0.4
+
+lr_pred_dtrain_t <- ifelse(lr_prob_dtrain > t, "1", "0")
+lr_pred_dtest_t <- ifelse(lr_prob_dtest > t, "1", "0")
+
+cm_lr_dtrain_t <- confusionMatrix(
+  as.factor(lr_pred_dtrain_t),
+  as.factor(dtrain$HeartDisease),
+  positive = "1" 
+)
+cm_lr_dtrain_t
+
+cm_lr_dtest_t <- confusionMatrix(
+  as.factor(lr_pred_dtest_t),
+  as.factor(dtest$HeartDisease),
+  positive = "1" 
+)
+cm_lr_dtest_t
+```
+
+```{r}
+# LINEAR DISCRIMINANT ANALYSIS (LDA)
+
+lda_fit = lda(HeartDisease ~ ., data=dtrain)
+lda_fit
+plot(lda_fit)
+
+# Confusion Matrices and Accuracies of LDA
+
+# Training dataset
+lda_pred_dtrain = predict(lda_fit, dtrain)$class
+
+table(lda_pred_dtrain, dtrain$HeartDisease)
+mean(lda_pred_dtrain == dtrain$HeartDisease)
+
+# confirm with built-in function
+cm_lda_dtrain <- confusionMatrix(
+  as.factor(lda_pred_dtrain),
+  as.factor(dtrain$HeartDisease),
+  positive = "1" 
+)
+cm_lda_dtrain
+
+# Test dataset
+lda_pred_dtest = predict(lda_fit, dtest)$class
+
+table(lda_pred_dtest, dtest$HeartDisease)
+mean(lda_pred_dtest == dtest$HeartDisease)
+
+# confirm with built-in function
+cm_lda_dtest <-confusionMatrix(
+  as.factor(lda_pred_dtest),
+  as.factor(dtest$HeartDisease),
+  positive = "1" 
+)
+cm_lda_dtest
+```
+
+```{r}
+#DECISION TREE
+# Create a fake rpart object to use with rpart.plot
+fake_rpart <- rpart::rpart(HeartDisease ~ ., data = dtrain, method = "class")
+
+# Plot Decision Tree
+rpart.plot::rpart.plot(fake_rpart, type = 1, box.palette = "YlGn")
+
+# Predictions
+tree_pred_dtrain <- predict(fake_rpart, dtrain, type = "class")
+tree_pred_dtest <- predict(fake_rpart, dtest, type = "class")
+
+# Confusion Matrix
+cm_tree_dtrain <- confusionMatrix(
+  as.factor(tree_pred_dtrain),
+  as.factor(dtrain$HeartDisease),
+  positive = "1" 
+)
+cm_tree_dtrain
+
+cm_tree_dtest <- confusionMatrix(
+  as.factor(tree_pred_dtest),
+  as.factor(dtest$HeartDisease),
+  positive = "1" 
+)
+cm_tree_dtest
+
+# Plot Cross-Validation Error vs. Complexity Parameter
+plotcp(fake_rpart)
+
+```
+
+```{r}
+# PRUNED DECISION TREE
+
+# Create a fake rpart object to use with rpart.plot
+fake_rpart <- rpart::rpart(HeartDisease ~ ., data = dtrain, method = "class")
+
+# Prune the Decision Tree
+ptree <- prune(fake_rpart, cp = 0.02)
+
+# Print Cross-Validation Error Table
+printcp(ptree)
+
+# Plot Pruned Decision Tree
+rpart.plot::rpart.plot(ptree, type = 1, box.palette = "YlGn")
+
+# Predictions
+ptree_pred_dtrain <- predict(ptree, dtrain, type = "class")
+ptree_pred_dtest <- predict(ptree, dtest, type = "class")
+
+# Confusion Matrix
+cm_ptree_dtrain <- confusionMatrix(
+  as.factor(ptree_pred_dtrain),
+  as.factor(dtrain$HeartDisease),
+  positive = "1" 
+)
+cm_ptree_dtrain
+
+cm_ptree_dtest <- confusionMatrix(
+  as.factor(ptree_pred_dtest),
+  as.factor(dtest$HeartDisease),
+  positive = "1" 
+)
+cm_ptree_dtest
+```
+
+```{r}
+# RANDOM FOREST
+dtrain$HeartDisease <- as.factor(dtrain$HeartDisease)
+dtest$HeartDisease <- as.factor(dtest$HeartDisease)
+
+
+rf = randomForest(HeartDisease ~ ., data = dtrain, 
+                  ntree = 50, mtry = 3, importance = TRUE)
+
+varImpPlot(rf, bg = "black", 
+           main = "Variable Importance Plot (Random Forest)")
+
+rf_pred_dtrain <- predict(rf, dtrain)
+rf_pred_dtest <- predict(rf, dtest)
+
+cm_rf_dtrain <- confusionMatrix(
+  as.factor(rf_pred_dtrain),
+  as.factor(dtrain$HeartDisease),
+  positive = "1" 
+)
+cm_rf_dtrain
+
+cm_rf_dtest <- confusionMatrix(
+  as.factor(rf_pred_dtest),
+  as.factor(dtest$HeartDisease),
+  positive = "1" 
+)
+cm_rf_dtest
+
+# RF models are not prone to overfitting
+# So, the larger gap between train acc (100%) and test acc (94.23%)
+# does not indicate a potential to improve test acc (like in other models)
+
+# Also, RF achieves the highest train and test accuracies anyway
+
+plot(dtrain$HeartDisease, rf_pred_dtrain)
+plot(dtest$HeartDisease, rf_pred_dtest)
+
+```
+
+```{r}
+# Define the 'abbr' and 'fullname' vectors
+abbr <- c("1a. LR", "1b. LR(t=0.4)", "2. LDA", "3a. DT", "3b. PDT", "4. RF")
+fullname <- c("Logistic Regression",
+              "Logistic Regression(thresh=0.4)",
+              "Linear Discriminant Analysis", 
+              "Decision Tree", 
+              "Pruned Decision Tree", 
+              "Random Forest")
+
+# Retrieve values from stored confusion matrices for accuracy and sensitivity
+# for both the training and test datasets
+acc_train <- c(cm_lr_dtrain$overall["Accuracy"],
+               cm_lr_dtrain_t$overall["Accuracy"],
+               cm_lda_dtrain$overall["Accuracy"],
+               cm_tree_dtrain$overall["Accuracy"],
+               cm_ptree_dtrain$overall["Accuracy"],
+               cm_rf_dtrain$overall["Accuracy"])
+
+acc_test <- c(cm_lr_dtest$overall["Accuracy"],
+              cm_lr_dtest_t$overall["Accuracy"],
+              cm_lda_dtest$overall["Accuracy"],
+              cm_tree_dtest$overall["Accuracy"],
+              cm_ptree_dtest$overall["Accuracy"],
+              cm_rf_dtest$overall["Accuracy"])
+
+snsv_train <- c(cm_lr_dtrain$byClass["Sensitivity"],
+                cm_lr_dtrain_t$byClass["Sensitivity"],
+                cm_lda_dtrain$byClass["Sensitivity"],
+                cm_tree_dtrain$byClass["Sensitivity"],
+                cm_ptree_dtrain$byClass["Sensitivity"],
+                cm_rf_dtrain$byClass["Sensitivity"])
+
+snsv_test <- c(cm_lr_dtest$byClass["Sensitivity"],
+               cm_lr_dtest_t$byClass["Sensitivity"],
+               cm_lda_dtest$byClass["Sensitivity"],
+               cm_tree_dtest$byClass["Sensitivity"],
+               cm_ptree_dtest$byClass["Sensitivity"],
+               cm_rf_dtest$byClass["Sensitivity"])
+
+# Create acc_summary dataframe
+acc_summary <- data.frame(abbr, fullname, acc_train, acc_test)
+colnames(acc_summary)[3:4] <- c("Train", "Test")
+
+# Melt the acc_summary dataframe
+acc_summary <- reshape2::melt(acc_summary, id.vars = c("abbr", "fullname"))
+
+# Create snsv_summary dataframe
+snsv_summary <- data.frame(abbr, fullname, snsv_train, snsv_test)
+colnames(snsv_summary)[3:4] <- c("Train", "Test")
+
+# Melt the snsv_summary dataframe
+snsv_summary <- reshape2::melt(snsv_summary, id.vars = c("abbr", "fullname"))
+
+# Now you can use acc_summary and snsv_summary for plotting
+
+```
+
+```{r}
+# MODELS COMPARISON
+
+abbr_ticks <- c("LR", "LR(t=0.4)", "LDA", "DT", "PDT", "RF")
+
+p20 <- ggplot(data = acc_summary, aes(x = abbr, y = value, fill = variable)) +
+  geom_bar(stat = "identity", position = position_dodge()) +
+  coord_cartesian(ylim = c(.7, 1)) + 
+  labs(title = "Comparison of Models - Accuracy", x = "Model", y = "Accuracy", 
+       fill = "Data Split") + 
+  scale_x_discrete(labels = abbr_ticks) +
+  theme_minimal() + 
+  scale_fill_brewer(palette = "YlGn")
+
+p21 <- ggplot(data = snsv_summary, aes(x = abbr, y = value, fill = variable)) +
+  geom_bar(stat = "identity", position = position_dodge()) +
+  coord_cartesian(ylim = c(.7, 1)) + 
+  labs(title = "Comparison of Models - Sensitivity", x = "Model" , y = "Sensitivity", 
+       fill = "Data Split") + 
+  scale_x_discrete(labels = abbr_ticks) + 
+  theme_minimal() + 
+  scale_fill_brewer(palette = "YlGn")
+
+grid.arrange(p20, p21, ncol=1)
+```
+
